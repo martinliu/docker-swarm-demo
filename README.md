@@ -1,9 +1,18 @@
+## 演示环境介绍
+
+演示用的笔记本：2011款MacBook Pro， 8GB内存，256GB SSD硬盘。
+
+软件版本：
+
+最新版Docker for Mac (beta)
+![docker Version](docker-version.jpg)
+
+VirtualBox 最新版: Version 5.0.26 r108824
+
 
 ## 创建三个节点
 
 ```
-docker-machine create node1 --driver virtualbox --virtualbox-cpu-count "1" --virtualbox-disk-size "8000" --virtualbox-memory "1024" --virtualbox-boot2docker-url=/Users/martin/Downloads/boot2docker_1.12.0.iso  && eval $(docker-machine env node1)
-
 docker-machine create node1 --driver virtualbox \
 --engine-insecure-registry 192.168.99.1:5000  \
 --virtualbox-cpu-count "1"  \
@@ -27,24 +36,20 @@ docker-machine create node3 --driver virtualbox \
 
 ```
 
+节点创建结果查看：
+
+```
 martin@localhost:~/Documents% docker-machine ls
 NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
 node1   -        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0
 node2   -        virtualbox   Running   tcp://192.168.99.101:2376           v1.12.0
 node3   -        virtualbox   Running   tcp://192.168.99.102:2376           v1.12.0
-
-martin@localhost:~/Documents% eval $(docker-machine env node1)
-martin@localhost:~/Documents% docker-machine ls
-NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
-node1   *        virtualbox   Running   tcp://192.168.99.100:2376           v1.12.0
-node2   -        virtualbox   Running   tcp://192.168.99.101:2376           v1.12.0
-node3   -        virtualbox   Running   tcp://192.168.99.102:2376           v1.12.0
-martin@localhost:~/Documents%
-
+```
 
 
 ## docker 版本信息查看
 
+进入节点node1查看docker版本信息
 ```
 martin@localhost:~/Documents% docker-machine ssh node1
                         ##         .
@@ -63,8 +68,6 @@ martin@localhost:~/Documents% docker-machine ssh node1
 Boot2Docker version 1.12.0, build HEAD : e030bab - Fri Jul 29 00:29:14 UTC 2016
 Docker version 1.12.0, build 8eab29e
 docker@node1:~$
-```
-
 
 docker@node1:~$ docker info
 Containers: 0
@@ -109,12 +112,15 @@ Insecure Registries:
  192.168.99.1:5000
  127.0.0.0/8
 docker@node1:~$
-
+```
 
 
 ## docker swarm 初始化
 
-docker@node1:~$ ip add s
+在节点node1上初始化Swarm mode群集，查看manager节点IP地址
+
+```
+docker@node1:~$ ip add s   
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -140,8 +146,10 @@ docker@node1:~$ ip add s
     inet 172.17.0.1/16 scope global docker0
        valid_lft forever preferred_lft forever
 docker@node1:~$
+```
 
-
+使用docker swarm init 命令初始化node1为管理节点。请根据你的IP地址调整这条命令。
+```
 docker@node1:~$ docker swarm init --advertise-addr 192.168.99.100
 Swarm initialized: current node (7fkc9gml325pekzmemtfflp6s) is now a manager.
 
@@ -155,20 +163,23 @@ To add a manager to this swarm, run the following command:
     --token SWMTKN-1-3p6af6uy6aqlghj1zb1lwx8dw20kxcivdnwdjy4qmvsttc4jmf-4ybuxkzczpsmysmj7p8rq64ln \
     192.168.99.100:2377
 docker@node1:~$
+```
+返回结果是两条命令，一条用于添加manager节点，一条用于添加worker节点。
 
 
 ## docker swarm 群集查看
 
+查看刚刚初始化好的swarm群集
+```
 docker@node1:~$ docker node ls
 ID                           HOSTNAME  STATUS  AVAILABILITY  MANAGER STATUS
 7fkc9gml325pekzmemtfflp6s *  node1     Ready   Active        Leader
-
+```
 
 
 ## node2 加入群集
 
 ```
-martin@localhost:~/Documents% eval $(docker-machine env node2)
 martin@localhost:~/Documents% docker-machine ssh node2
                         ##         .
                   ## ## ##        ==
@@ -193,7 +204,6 @@ docker@node2:~$ docker swarm join \
 >     --token SWMTKN-1-3p6af6uy6aqlghj1zb1lwx8dw20kxcivdnwdjy4qmvsttc4jmf-7bimj049k2w5qqlqnkp1s1nq3 \
 >     192.168.99.100:2377
 This node joined a swarm as a worker.
-```
 
 docker@node2:~$ docker info
 Containers: 0
@@ -241,6 +251,8 @@ Insecure Registries:
  192.168.99.1:5000
  127.0.0.0/8
 docker@node2:~$
+```
+
 
 
 ## docker swarm 群集节点查看
@@ -274,9 +286,7 @@ martin@localhost:~/Documents% docker-machine ssh node3
 Boot2Docker version 1.12.0, build HEAD : e030bab - Fri Jul 29 00:29:14 UTC 2016
 Docker version 1.12.0, build 8eab29e
 docker@node3:~$
-```
 
-```
 docker@node3:~$ docker swarm join \
 >     --token SWMTKN-1-3p6af6uy6aqlghj1zb1lwx8dw20kxcivdnwdjy4qmvsttc4jmf-7bimj049k2w5qqlqnkp1s1n
 q3 \
@@ -288,22 +298,23 @@ docker@node3:~$
 
 ## docker swarm 群集节点查看
 
+```
 docker@node1:~$ docker node ls
 ID                           HOSTNAME  STATUS  AVAILABILITY  MANAGER STATUS
 7fkc9gml325pekzmemtfflp6s *  node1     Ready   Active        Leader
 7m48wfe2dp08h8tjltcmszp9g    node2     Ready   Active
 9enczapw848f0m7r69eaynqtw    node3     Ready   Active
 docker@node1:~$
+```
+两位两个节点以worker的身份加入了群集。
 
+## 测试swarm群集服务创建
 
-
-## 测试服务
-
-docker service create --name ping00 192.168.99.1:5000/alpine ping 192.168.99.100
-
-
-docker@node1:~$ docker service create --name ping00 192.168.99.1:5000/alpine ping 192.168.99.100
+创建测试服务ping00，使用alpine镜像，ping 192.168.99.1 主机地址。
+```
+docker@node1:~$ docker service create --name ping00 192.168.99.1:5000/alpine ping 192.168.99.104
 9aehwynxb3am31l5oiy22kwwl
+
 docker@node1:~$ docker service ls
 ID            NAME    REPLICAS  IMAGE                     COMMAND
 9aehwynxb3am  ping00  1/1       192.168.99.1:5000/alpine  ping 192.168.99.100
@@ -330,17 +341,17 @@ docker@node1:~$
 docker@node1:~$ docker service rm ping00
 ping00
 
+docker@node1:~$ docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+```
+以上的测试表明，建立服务正常，容器工作正常，服务删除之后，没有容器在运行了。
+
 ## 构建测试web站点镜像
 
-martin@localhost:~/Downloads/images/demo-sit% docker build -t 192.168.99.1:5000/mycooldemo:v1 .
-Sending build context to Docker daemon 1.999 MB
-Step 1 : FROM localhost:5000/httpd
- ---> bf8f39bc3b6b
-Step 2 : COPY ./public-html/ /usr/local/apache2/htdocs/
- ---> 4fedead8e12e
-Removing intermediate container 007070102da9
-Successfully built 4fedead8e12e
+在Mac笔记本上用Docker for Mac做一个网站的demo镜像。
 
+```
 martin@localhost:~/Downloads/images/demo-sit% docker build -t localhost:5000/mycooldemo:v1 .
 Sending build context to Docker daemon 1.999 MB
 Step 1 : FROM localhost:5000/httpd
@@ -349,16 +360,15 @@ Step 2 : COPY ./public-html/ /usr/local/apache2/htdocs/
  ---> 55502f38daf3
 Removing intermediate container 2ec1eb05615b
 Successfully built 55502f38daf3
+
+
 martin@localhost:~/Downloads/images/demo-sit% docker images
+martin@Martins-MacBook-Pro:~/Downloads/images/docker-swarm-demp% docker images
 REPOSITORY                                  TAG                 IMAGE ID            CREATED             SIZE
-localhost:5000/mycooldemo                   v1                  55502f38daf3        2 seconds ago       196.4 MB
+localhost:5000/mycooldemo                   v1                  bbb741b9f904        2 seconds ago       196.4 MB
 gitlab                                      latest              94fac614bc9e        2 weeks ago         1.176 GB
 alpine                                      latest              4e38e38c8ce0        5 weeks ago         4.799 MB
-localhost:5000/alpine                       latest              4e38e38c8ce0        5 weeks ago         4.799 MB
-192.168.99.1:5000/httpd                     latest              bf8f39bc3b6b        10 weeks ago        194.5 MB
-192.168.99.20:5000/httpd                    latest              bf8f39bc3b6b        10 weeks ago        194.5 MB
-index.alauda.cn/library/httpd               latest              bf8f39bc3b6b        10 weeks ago        194.5 MB
-localhost:5000/httpd                        latest              bf8f39bc3b6b        10 weeks ago        194.5 MB
+
 
 martin@localhost:~/Downloads/images/demo-sit% docker push localhost:5000/mycooldemo:v1
 The push refers to a repository [localhost:5000/mycooldemo]
@@ -370,13 +380,15 @@ a48bac68f71e: Mounted from mysite
 5107a871e055: Mounted from mysite
 6eb35183d3b8: Mounted from mysite
 v1: digest: sha256:6e5c88e400e13ef0807d6d8c2eb4971193d8fc7ba331a48d665a3a31d15708d4 size: 3225
-
+```
+mycooldemo v1版的镜像已经存在了本机的镜像仓库服务里。
 
 
 ## 建立web站点服务
 
 
-docker@node1:~$ docker service create --name website --publish 80:80 --update-delay 30 --update-parallelism 2 192.168.99.1:5000/mycooldemo:v1
+```
+docker@node1:~$ docker service create --name website --publish 80:80  --update-parallelism 2 192.168.99.1:5000/mycooldemo:v1
 14gk0leg6lyih2x3xgjvxv50u
 docker@node1:~$
 
@@ -398,17 +410,17 @@ Ports:
  PublishedPort = 80
 docker@node1:~$
 
-
-
 docker@node1:~$ docker service ps website
 ID                         NAME       IMAGE                            NODE   DESIRED STATE  CURRENT STATE               ERROR
 bh8psy4okh3cl75cgg53pms5a  website.1  192.168.99.1:5000/mycooldemo:v1  node3  Running        Running about a minute ago
 docker@node1:~$
-
-Browser node1~3 ip Address
+```
+在浏览器中查看 node1, node2, node3 的IP地址，都能看的这个网页。
 
 ## 服务扩展
 
+下面把这个服务的规模从1，扩展到10。
+```
 docker@node1:~$ docker service scale website=10
 website
 docker@node1:~$ docker service ps website
@@ -423,33 +435,42 @@ atncxyxszs9qro5z9sl6p28nz  website.7   192.168.99.1:5000/mycooldemo:v1  node3  R
 duyg2mpgpkuyc7nrwyahn7hy8  website.8   192.168.99.1:5000/mycooldemo:v1  node1  Running        Preparing 16 seconds ago
 f1fjfil251ko1ictu6b8doy8v  website.9   192.168.99.1:5000/mycooldemo:v1  node1  Running        Preparing 16 seconds ago
 dycuf9hcq2g73rv1fsfurmutq  website.10  192.168.99.1:5000/mycooldemo:v1  node3  Running        Running 12 seconds ago
-
+```
+现在能够查看到10个网站的容器运行在了3个节点上。
 
 ## 关机 node3
 
+认为地模拟故障发生。关机节点node3。
+```
 docker@node3:~$ docker ps
 CONTAINER ID        IMAGE                             COMMAND              CREATED             STATUS              PORTS               NAMES
 81a7e2d61aad        192.168.99.1:5000/mycooldemo:v1   "httpd-foreground"   3 minutes ago       Up 3 minutes        80/tcp              website.7.atncxyxszs9qro5z9sl6p28nz
 94dcfa391b46        192.168.99.1:5000/mycooldemo:v1   "httpd-foreground"   3 minutes ago       Up 3 minutes        80/tcp              website.10.dycuf9hcq2g73rv1fsfurmutq
 a999acc319d6        192.168.99.1:5000/mycooldemo:v1   "httpd-foreground"   3 minutes ago       Up 3 minutes        80/tcp              website.6.coor3uzcd1z9nna18ukwl261w
 0be0c21d4d41        192.168.99.1:5000/mycooldemo:v1   "httpd-foreground"   8 minutes ago       Up 8 minutes        80/tcp              website.1.bh8psy4okh3cl75cgg53pms5a
-docker@node3:~$ sudo shutdown
-Usage: shutdown [-rh] time
-                -r:      reboot after shutdown.
-                -h:      halt after shutdown.
-                ** the "time" argument is mandatory! (try "now") **
+
 docker@node3:~$ sudo poweroff
 docker@node3:~$ Connection to 127.0.0.1 closed by remote host.
 exit status 255
 
+martin@Martins-MacBook-Pro:~/Documents% docker-machine ls
+NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+node1   -        virtualbox   Running   tcp://192.168.99.103:2376           v1.12.0
+node2   -        virtualbox   Running   tcp://192.168.99.104:2376           v1.12.0
+node3   -        virtualbox   Stopped
+```
+node3 已经被关机。
 
-## 查看节点群集
+## 查看node3关机后群集的状态
 
+
+```
 docker@node1:~$ docker node ls
 ID                           HOSTNAME  STATUS  AVAILABILITY  MANAGER STATUS
 7fkc9gml325pekzmemtfflp6s *  node1     Ready   Active        Leader
 7m48wfe2dp08h8tjltcmszp9g    node2     Ready   Active
 9enczapw848f0m7r69eaynqtw    node3     Down    Active
+
 docker@node1:~$ docker service ps website
 ID                         NAME            IMAGE                            NODE   DESIRED STATE  CURRENT STATE           ERROR
 9aytc7q2b782y7ujym5s7876z  website.1       192.168.99.1:5000/mycooldemo:v1  node2  Running        Running 24 seconds ago
@@ -483,9 +504,13 @@ Ports:
  Protocol = tcp
  TargetPort = 80
  PublishedPort = 80
+ ```
+ 可以看到整个服务是健康的。
 
 ## 演示站点内容更新
 
+更新网站到第二个版本。修改网站源代码之后，运行下面的命令。
+```
 martin@localhost:~/Downloads/images/demo-sit% docker build -t localhost:5000/mycooldemo:v2 .
 Sending build context to Docker daemon 1.999 MB
 Step 1 : FROM localhost:5000/httpd
@@ -494,6 +519,7 @@ Step 2 : COPY ./public-html/ /usr/local/apache2/htdocs/
  ---> fa2e8b550678
 Removing intermediate container a36ce511ac49
 Successfully built fa2e8b550678
+
 martin@localhost:~/Downloads/images/demo-sit% docker push localhost:5000/mycooldemo:v2
 The push refers to a repository [localhost:5000/mycooldemo]
 bd82456d2699: Pushed
@@ -505,16 +531,52 @@ a48bac68f71e: Layer already exists
 6eb35183d3b8: Layer already exists
 v2: digest: sha256:cd35d0776ebe8987e2bc31343b57daa1fddc5cf74d62f3499e45addc2b0e0942 size: 3225
 martin@local
-
+```
+新版本镜像已经发布到了本地镜像仓库中了。
 
 ## 服务更新
 
+把当前的website服务更新到v2的版本。
 
-docker service update --image 192.168.99.1:5000/mycooldemo:v2  website
-
+```
+docker@node1:~$ docker service update --update-parallelism 2 --image 192.168.99.1:5000/mycooldemo:v2  website
+website
+docker@node1:~$ docker service ps website
+ID                         NAME            IMAGE                            NODE   DESIRED STATE  CURRENT STATE           ERROR
+2uhvqozw7i9m9hh60oe9ugcgq  website.1       192.168.99.1:5000/mycooldemo:v2  node1  Running        Running 1 seconds ago
+at5wl1ok2ppry1cg39z7jfeqn   \_ website.1   192.168.99.1:5000/mycooldemo:v1  node2  Shutdown       Shutdown 2 seconds ago
+amrn40kem1ynhfh06v1j9ulj9   \_ website.1   192.168.99.1:5000/mycooldemo:v1  node3  Shutdown       Running 21 minutes ago
+4wbewk80jmuskvn759ff4lis4  website.2       192.168.99.1:5000/mycooldemo:v2  node2  Running        Running 2 seconds ago
+8ko1m8sq9w38tgbt4z2o8g6cv   \_ website.2   192.168.99.1:5000/mycooldemo:v1  node1  Shutdown       Shutdown 1 seconds ago
+8kwn27tz2pxqkxx4d5jy9jokg   \_ website.2   192.168.99.1:5000/mycooldemo:v1  node3  Shutdown       Running 19 minutes ago
+61zxm5t956rfvbvm8bk9ociq9  website.3       192.168.99.1:5000/mycooldemo:v2  node1  Running        Running 3 seconds ago
+7byso2rw4k4l7drjxkm9ix6e2   \_ website.3   192.168.99.1:5000/mycooldemo:v1  node1  Shutdown       Shutdown 3 seconds ago
+bv283agf22y73cgkvokmbqikz  website.4       192.168.99.1:5000/mycooldemo:v2  node1  Running        Running 4 seconds ago
+4qx2kef1trqb4gzlcm23tn3a7   \_ website.4   192.168.99.1:5000/mycooldemo:v1  node1  Shutdown       Shutdown 5 seconds ago
+4z8gzicll33hk1rhzdhcr2wt3  website.5       192.168.99.1:5000/mycooldemo:v2  node1  Running        Running 8 seconds ago
+12csyngo30snr39zwqveqaity   \_ website.5   192.168.99.1:5000/mycooldemo:v1  node1  Shutdown       Shutdown 8 seconds ago
+5dprgu85kdgby5c1x67cb0yjm  website.6       192.168.99.1:5000/mycooldemo:v2  node2  Running        Running 5 seconds ago
+4lx7lqia9225m1g0sysm84zzk   \_ website.6   192.168.99.1:5000/mycooldemo:v1  node2  Shutdown       Shutdown 5 seconds ago
+9le6i0o96ptzs5a05ft5rmrar  website.7       192.168.99.1:5000/mycooldemo:v2  node2  Running        Running 3 seconds ago
+6eovmir1mzdmbp0u3bihthgbg   \_ website.7   192.168.99.1:5000/mycooldemo:v1  node2  Shutdown       Shutdown 4 seconds ago
+dy55kousz2edeobzz0s722386   \_ website.7   192.168.99.1:5000/mycooldemo:v1  node3  Shutdown       Running 19 minutes ago
+2rr0hjqwxlczvswemck5lehrk  website.8       192.168.99.1:5000/mycooldemo:v2  node2  Running        Running 8 seconds ago
+0sk18xv2h6lp1kxn2sethdkr6   \_ website.8   192.168.99.1:5000/mycooldemo:v1  node2  Shutdown       Shutdown 9 seconds ago
+9hlwy3ewkdrqt6xr9g6bfjt23  website.9       192.168.99.1:5000/mycooldemo:v2  node2  Running        Running 7 seconds ago
+1676hrwyzsu35zazk4icategf   \_ website.9   192.168.99.1:5000/mycooldemo:v1  node1  Shutdown       Shutdown 6 seconds ago
+7ysuf1rbwwp2xdgdfvu7y06xo   \_ website.9   192.168.99.1:5000/mycooldemo:v1  node3  Shutdown       Running 19 minutes ago
+1930npzjo7763586nn0pbfm9i  website.10      192.168.99.1:5000/mycooldemo:v2  node1  Running        Running 6 seconds ago
+1cracl5bo5smhyb5lvd9mpom0   \_ website.10  192.168.99.1:5000/mycooldemo:v1  node2  Shutdown       Shutdown 7 seconds ago
+```
+在浏览器中查看更新的情况。
 
 ## 服务删除
+
+测试完毕之后，删除服务。
+```
 docker@node1:~$ docker service rm website
 website
 docker@node1:~$ docker ps
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+```
+所有的容器都荡然无存.
